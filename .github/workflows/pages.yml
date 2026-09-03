@@ -28,6 +28,8 @@ jobs:
         run: |
           node --check app.js
           node --check layout-enhancements.js
+          node --check policy-ui.js
+          node --check share-state.js
 
       - name: Validate policy data
         run: |
@@ -65,8 +67,11 @@ jobs:
         run: |
           test -f index.html
           test -f styles.css
+          test -f share-enhancements.css
           test -f app.js
           test -f layout-enhancements.js
+          test -f policy-ui.js
+          test -f share-state.js
           test -f data/city-policies.json
           test -f data/tax-policy.json
           test -f PRODUCT_REQUIREMENTS.md
