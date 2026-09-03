@@ -211,27 +211,35 @@
 
   function saveLocalState() {
     if (!$('city')?.options.length || !deductionNodes().length) return;
-    try {
-      localStorage.setItem(localStorageKey(), JSON.stringify({
-        version: 1,
-        form: collectState(),
-        detailView: activeDetailView()
-      }));
-    } catch (_) {}
+    const payload = JSON.stringify({
+      version: 1,
+      form: collectState(),
+      detailView: activeDetailView()
+    });
+    const key = localStorageKey();
+    try { sessionStorage.setItem(key, payload); } catch (_) {}
+    try { localStorage.setItem(key, payload); } catch (_) {}
   }
 
   function loadLocalState() {
+    const key = localStorageKey();
+    let raw = null;
+    try { raw = sessionStorage.getItem(key); } catch (_) {}
+    if (!raw) {
+      try { raw = localStorage.getItem(key); } catch (_) {}
+    }
+    if (!raw) return null;
+
     try {
-      const key = localStorageKey();
-      const raw = localStorage.getItem(key);
-      if (!raw) return null;
       const saved = JSON.parse(raw);
       if (!saved || saved.version !== 1 || !Array.isArray(saved.form) || saved.form[0] !== 1) {
-        localStorage.removeItem(key);
+        try { sessionStorage.removeItem(key); } catch (_) {}
+        try { localStorage.removeItem(key); } catch (_) {}
         return null;
       }
       return saved;
     } catch (_) {
+      try { sessionStorage.removeItem(key); } catch (_) {}
       return null;
     }
   }
