@@ -3,10 +3,12 @@
 
   const $ = id => document.getElementById(id);
   const pendingHash = location.hash.startsWith('#s=') ? location.hash.slice(3) : '';
+  const LOCAL_STATE_PREFIX = 'income-tax-calculator-local-state-v1:';
   let currentShareUrl = '';
   let currentShareTitle = '';
   let currentShareDescription = '';
   let autoShareTimer = null;
+  let localSaveTimer = null;
 
   if (pendingHash) history.replaceState(null, '', location.pathname + location.search);
 
@@ -192,6 +194,87 @@
       $('advancedCompare')?.open ? 1 : 0,
       deductions
     ];
+  }
+
+  function localStorageKey() {
+    const entries = [...new URLSearchParams(location.search).entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
+    const normalized = new URLSearchParams();
+    entries.forEach(([key, value]) => normalized.append(key, value));
+    const query = normalized.toString();
+    return `${LOCAL_STATE_PREFIX}${location.pathname}${query ? `?${query}` : ''}`;
+  }
+
+  function activeDetailView() {
+    return document.querySelector('#detailTabs button.active[data-value]')?.dataset.value || '';
+  }
+
+  function saveLocalState() {
+    if (!$('city')?.options.length || !deductionNodes().length) return;
+    try {
+      localStorage.setItem(localStorageKey(), JSON.stringify({
+        version: 1,
+        form: collectState(),
+        detailView: activeDetailView()
+      }));
+    } catch (_) {}
+  }
+
+  function loadLocalState() {
+    try {
+      const key = localStorageKey();
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const saved = JSON.parse(raw);
+      if (!saved || saved.version !== 1 || !Array.isArray(saved.form) || saved.form[0] !== 1) {
+        localStorage.removeItem(key);
+        return null;
+      }
+      return saved;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function restoreDetailView(value) {
+    if (!value) return;
+    const button = [...document.querySelectorAll('#detailTabs button[data-value]')]
+      .find(node => node.dataset.value === value);
+    if (button && !button.classList.contains('active')) button.click();
+  }
+
+  function restoreLocalState() {
+    const saved = loadLocalState();
+    if (!saved) return;
+    const started = Date.now();
+    const timer = setInterval(() => {
+      const ready = $('city')?.options.length && deductionNodes().length;
+      if (!ready && Date.now() - started < 5000) return;
+      clearInterval(timer);
+      if (!ready) return;
+      try {
+        applyState(saved.form);
+        restoreDetailView(saved.detailView);
+      } catch (error) {
+        console.error('restore local calculator state failed', error);
+      }
+    }, 50);
+  }
+
+  function installLocalPersistence() {
+    const queueSave = () => {
+      clearTimeout(localSaveTimer);
+      localSaveTimer = setTimeout(saveLocalState, 80);
+    };
+    document.addEventListener('input', queueSave, true);
+    document.addEventListener('change', queueSave, true);
+    document.addEventListener('click', event => {
+      if (event.target?.closest?.('#resetBtn, #detailTabs button[data-value]')) queueSave();
+    }, false);
+    document.addEventListener('toggle', event => {
+      if (event.target?.id === 'advancedCompare') queueSave();
+    }, true);
+    window.addEventListener('pagehide', saveLocalState);
   }
 
   function bytesToBase64Url(bytes) {
@@ -462,8 +545,10 @@
 
   installBranding();
   installLiveTitle();
+  installLocalPersistence();
   ensureSharePanel();
   simplifyFooterTools();
   bindShareButton();
-  restoreSharedState();
+  if (pendingHash) restoreSharedState();
+  else restoreLocalState();
 })();
