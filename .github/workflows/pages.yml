@@ -25,7 +25,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate JavaScript
-        run: node --check app.js
+        run: |
+          node --check app.js
+          node --check layout-enhancements.js
 
       - name: Validate policy data
         run: |
@@ -64,6 +66,7 @@ jobs:
           test -f index.html
           test -f styles.css
           test -f app.js
+          test -f layout-enhancements.js
           test -f data/city-policies.json
           test -f data/tax-policy.json
           test -f PRODUCT_REQUIREMENTS.md
