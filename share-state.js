@@ -164,6 +164,12 @@
     input.remove();
   }
 
+  async function nativeShare(url) {
+    if (!navigator.share) return false;
+    await navigator.share({ url });
+    return true;
+  }
+
   function ensureShareDialog() {
     let overlay = $('shareLinkOverlay');
     if (overlay) return overlay;
@@ -173,9 +179,9 @@
     overlay.hidden = true;
     overlay.innerHTML = `<section class="share-link-card" role="dialog" aria-modal="true" aria-labelledby="shareLinkTitle">
       <button class="share-link-close" type="button" aria-label="关闭">×</button>
-      <h3 id="shareLinkTitle">分享链接已复制</h3>
-      <p id="shareAutoStatus">1 秒后自动打开系统分享…</p>
+      <h3 id="shareLinkTitle">已复制</h3>
       <a id="shareLinkUrl" class="share-link-open" href="#" target="_blank" rel="noopener"></a>
+      <button id="shareCopyAndShare" class="share-link-action" type="button">复制并分享</button>
     </section>`;
     document.body.appendChild(overlay);
     overlay.addEventListener('click', e => {
@@ -190,27 +196,39 @@
   function presentShareUrl(url) {
     const overlay = ensureShareDialog();
     const link = $('shareLinkUrl');
-    const status = $('shareAutoStatus');
+    const action = $('shareCopyAndShare');
     link.href = url;
     link.textContent = url;
-    status.textContent = navigator.share ? '1 秒后自动打开系统分享…' : '当前浏览器不支持系统分享，链接已复制';
+    action.onclick = async () => {
+      try {
+        await copyText(url);
+        if (navigator.share) {
+          try {
+            await nativeShare(url);
+          } catch (err) {
+            if (err?.name !== 'AbortError') {
+              console.error(err);
+              showToast('链接已复制，系统分享未能打开');
+            }
+          }
+        } else {
+          showToast('链接已复制');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('复制分享链接失败，请重试');
+      }
+    };
     overlay.hidden = false;
   }
 
   function scheduleNativeShare(url) {
     if (!navigator.share) return;
     setTimeout(async () => {
-      const status = $('shareAutoStatus');
       try {
-        await navigator.share({ url });
-        if (status) status.textContent = '系统分享已打开，链接也已复制';
+        await nativeShare(url);
       } catch (err) {
-        if (err?.name === 'AbortError') {
-          if (status) status.textContent = '已取消系统分享，链接仍保留在剪贴板';
-          return;
-        }
-        console.error(err);
-        if (status) status.textContent = '浏览器未允许自动系统分享，链接已复制';
+        if (err?.name !== 'AbortError') console.debug('automatic native share was not allowed', err);
       }
     }, 1000);
   }
@@ -219,11 +237,10 @@
     const button = $('floatShare');
     try {
       const url = await makeShareUrl();
-      presentShareUrl(url);
       await copyText(url);
+      presentShareUrl(url);
       button?.classList.add('share-success');
       setTimeout(() => button?.classList.remove('share-success'), 900);
-      showToast('分享 URL 已复制');
       scheduleNativeShare(url);
     } catch (err) {
       console.error(err);
