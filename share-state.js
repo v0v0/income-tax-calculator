@@ -146,8 +146,12 @@
 
   async function copyText(text) {
     if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return;
+      try {
+        await navigator.clipboard.writeText(text);
+        return;
+      } catch (err) {
+        console.debug('clipboard API unavailable, falling back', err);
+      }
     }
     const input = document.createElement('textarea');
     input.value = text;
