@@ -5,6 +5,7 @@
   const pendingHash = location.hash.startsWith('#s=') ? location.hash.slice(3) : '';
   let currentShareUrl = '';
   let currentShareTitle = '';
+  let currentShareDescription = '';
   let autoShareTimer = null;
 
   if (pendingHash) history.replaceState(null, '', location.pathname + location.search);
@@ -87,6 +88,29 @@
     return `税后计算-${cityTitle()}${compactAmount(salary)}月薪-${bonusTitle()}`;
   }
 
+  function metricAmount(id) {
+    const text = $(id)?.textContent?.trim() || '';
+    if (!text || text === '-' || text === '—') return null;
+    const value = Number(text.replace(/[^\d.-]/g, ''));
+    return Number.isFinite(value) ? Math.max(0, value) : null;
+  }
+
+  function buildShareDescription() {
+    const annualCash = metricAmount('annualCash');
+    const comprehensiveAnnual = metricAmount('comprehensiveAnnual');
+    const annualTax = metricAmount('annualTax');
+    const socialAnnual = metricAmount('socialAnnual');
+    const personalFundAnnual = metricAmount('personalFundAnnual');
+    const employerFundAnnual = metricAmount('employerFundAnnual');
+    const metrics = [annualCash, comprehensiveAnnual, annualTax, socialAnnual, personalFundAnnual, employerFundAnnual];
+
+    if (metrics.every(value => value !== null)) {
+      return `全年税后现金${compactAmount(annualCash)}，现金+公积金${compactAmount(comprehensiveAnnual)}；个税${compactAmount(annualTax)}，五险${compactAmount(socialAnnual)}，个人公积金${compactAmount(personalFundAnnual)}、公司${compactAmount(employerFundAnnual)}。`;
+    }
+
+    return `${cityTitle()}税后收入方案：${compactAmount(numberAt('salary'))}月薪，${bonusTitle()}。`;
+  }
+
   function ensureMeta(selector, attrs) {
     let node = document.querySelector(selector);
     if (!node) {
@@ -99,15 +123,19 @@
 
   function updatePageTitle() {
     const title = buildShareTitle();
-    const description = `${cityTitle()}税后收入方案：${compactAmount(numberAt('salary'))}月薪，${bonusTitle()}。`;
+    const description = buildShareDescription();
     document.title = title;
 
+    ensureMeta('meta[name="description"]', { name:'description' }).setAttribute('content', description);
     ensureMeta('meta[property="og:title"]', { property:'og:title' }).setAttribute('content', title);
     ensureMeta('meta[property="og:description"]', { property:'og:description' }).setAttribute('content', description);
     ensureMeta('meta[property="og:type"]', { property:'og:type' }).setAttribute('content', 'website');
     ensureMeta('meta[name="twitter:title"]', { name:'twitter:title' }).setAttribute('content', title);
+    ensureMeta('meta[name="twitter:description"]', { name:'twitter:description' }).setAttribute('content', description);
     ensureMeta('meta[itemprop="name"]', { itemprop:'name' }).setAttribute('content', title);
+    ensureMeta('meta[itemprop="description"]', { itemprop:'description' }).setAttribute('content', description);
     currentShareTitle = title;
+    currentShareDescription = description;
     return title;
   }
 
@@ -349,10 +377,10 @@
     document.body.classList.remove('share-panel-open');
   }
 
-  async function triggerSystemShare(url, title) {
+  async function triggerSystemShare(url, title, description=currentShareDescription || buildShareDescription()) {
     if (!navigator.share) return false;
     try {
-      await navigator.share({ title, text:title, url });
+      await navigator.share({ title, text:description, url });
       return true;
     } catch (error) {
       if (error?.name !== 'AbortError') console.debug('system share unavailable', error);
