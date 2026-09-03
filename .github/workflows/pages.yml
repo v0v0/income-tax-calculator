@@ -1,0 +1,85 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate JavaScript
+        run: node --check app.js
+
+      - name: Validate policy data
+        run: |
+          python -m json.tool data/city-policies.json > /dev/null
+          python -m json.tool data/tax-policy.json > /dev/null
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          cities = json.loads(Path('data/city-policies.json').read_text(encoding='utf-8'))
+          rows = cities['cities']
+          assert len(rows) == 30, len(rows)
+          assert len({x['id'] for x in rows}) == 30
+          assert [x['rank'] for x in rows] == list(range(1, 31))
+          assert cities['calculationPolicy'] == 'current-snapshot-full-year'
+
+          for city in rows:
+              assert city['status'] in {'current', 'temporary', 'reference'}
+              for item in city['socialInsurance'].values():
+                  assert item['baseMin'] > 0
+                  assert item['baseMax'] >= item['baseMin']
+                  assert item['personalRate'] >= 0
+              fund = city['housingFund']
+              assert fund['baseMax'] >= fund['baseMin'] > 0
+              assert 0 <= fund['defaultPersonalRate'] <= 0.30
+              assert 0 <= fund['defaultEmployerRate'] <= 0.30
+
+          tax = json.loads(Path('data/tax-policy.json').read_text(encoding='utf-8'))
+          assert tax['monthlyBasicDeduction'] == 5000
+          assert tax['annualBasicDeduction'] == 60000
+          assert tax['bonusSeparateTaxValidThrough'] == '2027-12-31'
+          PY
+
+      - name: Verify required files
+        run: |
+          test -f index.html
+          test -f styles.css
+          test -f app.js
+          test -f data/city-policies.json
+          test -f data/tax-policy.json
+          test -f PRODUCT_REQUIREMENTS.md
+          test -f DATA_SOURCES.md
+          test -f .nojekyll
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload static site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
