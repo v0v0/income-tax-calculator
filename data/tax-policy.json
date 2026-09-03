@@ -1,0 +1,36 @@
+{
+  "year": 2026,
+  "monthlyBasicDeduction": 5000,
+  "annualBasicDeduction": 60000,
+  "comprehensiveBrackets": [
+    {"max":36000,"rate":0.03,"quick":0},
+    {"max":144000,"rate":0.10,"quick":2520},
+    {"max":300000,"rate":0.20,"quick":16920},
+    {"max":420000,"rate":0.25,"quick":31920},
+    {"max":660000,"rate":0.30,"quick":52920},
+    {"max":960000,"rate":0.35,"quick":85920},
+    {"max":null,"rate":0.45,"quick":181920}
+  ],
+  "bonusBrackets": [
+    {"monthlyMax":3000,"rate":0.03,"quick":0},
+    {"monthlyMax":12000,"rate":0.10,"quick":210},
+    {"monthlyMax":25000,"rate":0.20,"quick":1410},
+    {"monthlyMax":35000,"rate":0.25,"quick":2660},
+    {"monthlyMax":55000,"rate":0.30,"quick":4410},
+    {"monthlyMax":80000,"rate":0.35,"quick":7160},
+    {"monthlyMax":null,"rate":0.45,"quick":15160}
+  ],
+  "bonusSeparateTaxValidThrough": "2027-12-31",
+  "deductionDefaults": {
+    "infantCare":{"label":"3岁以下婴幼儿照护","monthly":2000,"kind":"monthly"},
+    "childEducation":{"label":"子女教育","monthly":2000,"kind":"monthly"},
+    "elderSupport":{"label":"赡养老人","monthly":3000,"kind":"monthly"},
+    "housingLoan":{"label":"住房贷款利息","monthly":1000,"kind":"monthly","exclusiveWith":"rent"},
+    "rent":{"label":"住房租金","monthly":1500,"kind":"monthly","exclusiveWith":"housingLoan"},
+    "continuingEducation":{"label":"学历（学位）继续教育","monthly":400,"kind":"monthly"},
+    "vocationalEducation":{"label":"职业资格继续教育","annual":3600,"kind":"annual"},
+    "personalPension":{"label":"个人养老金","monthly":1000,"annualMax":12000,"kind":"monthly"},
+    "seriousIllness":{"label":"大病医疗","annual":0,"annualMax":80000,"kind":"annual"},
+    "other":{"label":"其他依法确定扣除","monthly":0,"kind":"monthly"}
+  }
+}
