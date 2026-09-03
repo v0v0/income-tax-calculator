@@ -30,6 +30,7 @@ jobs:
           node --check layout-enhancements.js
           node --check policy-ui.js
           node --check share-state.js
+          node --check title-format.js
           node --check analytics-loader.js
 
       - name: Validate policy data
@@ -73,6 +74,7 @@ jobs:
           test -f layout-enhancements.js
           test -f policy-ui.js
           test -f share-state.js
+          test -f title-format.js
           test -f analytics-loader.js
           test -f data/city-policies.json
           test -f data/tax-policy.json
