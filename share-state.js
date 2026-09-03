@@ -1,15 +1,135 @@
 (() => {
   'use strict';
+
   const $ = id => document.getElementById(id);
   const pendingHash = location.hash.startsWith('#s=') ? location.hash.slice(3) : '';
+  let currentShareUrl = '';
+  let currentShareTitle = '';
+  let autoShareTimer = null;
+
   if (pendingHash) history.replaceState(null, '', location.pathname + location.search);
 
   const modeIndex = (value, values) => Math.max(0, values.indexOf(value));
   const valueAt = (id, fallback='') => $(id)?.value ?? fallback;
   const numberAt = (id, fallback=0) => {
-    const v = Number(valueAt(id, fallback));
-    return Number.isFinite(v) ? v : fallback;
+    const value = Number(valueAt(id, fallback));
+    return Number.isFinite(value) ? value : fallback;
   };
+
+  function installBranding() {
+    const iconHref = './favicon.svg?v=20260904-2';
+    const existing = document.querySelector('link[rel="icon"]');
+    if (existing) {
+      existing.href = iconHref;
+      existing.type = 'image/svg+xml';
+      existing.setAttribute('sizes', 'any');
+    }
+    if (!document.querySelector('link[data-shortcut-icon]')) {
+      const shortcut = document.createElement('link');
+      shortcut.rel = 'shortcut icon';
+      shortcut.type = 'image/svg+xml';
+      shortcut.href = iconHref;
+      shortcut.dataset.shortcutIcon = '1';
+      document.head.appendChild(shortcut);
+    }
+
+    const theme = document.querySelector('meta[name="theme-color"]');
+    if (theme) theme.setAttribute('content', '#eaf3ff');
+
+    const hero = document.querySelector('.hero');
+    const heading = hero?.querySelector('h1');
+    if (hero && heading && !hero.querySelector('.brand-lockup')) {
+      const lockup = document.createElement('div');
+      lockup.className = 'brand-lockup';
+      const mark = document.createElement('img');
+      mark.className = 'brand-mark';
+      mark.src = iconHref;
+      mark.alt = '';
+      mark.width = 42;
+      mark.height = 42;
+      heading.insertAdjacentElement('beforebegin', lockup);
+      lockup.append(mark, heading);
+      const subtitle = document.createElement('p');
+      subtitle.className = 'hero-subtitle';
+      subtitle.textContent = '中国大陆主要城市 · 工资 / 年终奖 / 五险一金 / 专项扣除';
+      lockup.insertAdjacentElement('afterend', subtitle);
+    }
+  }
+
+  function compactAmount(value) {
+    const amount = Math.max(0, Number(value || 0));
+    if (amount >= 10000) {
+      const wan = amount / 10000;
+      return `${Number.isInteger(wan) ? wan.toFixed(0) : Number(wan.toFixed(2))}万`;
+    }
+    return `${Math.round(amount)}元`;
+  }
+
+  function cityTitle() {
+    const raw = $('city')?.selectedOptions?.[0]?.textContent?.trim() || '';
+    return raw.replace(/^\d+\.\s*/, '').split(/[·|｜]/)[0].trim() || '全国';
+  }
+
+  function bonusTitle() {
+    const mode = valueAt('bonusInputMode', 'months');
+    if (mode === 'months') {
+      const months = Math.max(0, numberAt('bonusMonths'));
+      if (!months) return '无年终奖';
+      const text = Number.isInteger(months) ? months.toFixed(0) : String(Number(months.toFixed(1)));
+      return `${text}月奖`;
+    }
+    const amount = Math.max(0, numberAt('bonusAmount'));
+    return amount ? `${compactAmount(amount)}年终奖` : '无年终奖';
+  }
+
+  function buildShareTitle() {
+    const salary = Math.max(0, numberAt('salary'));
+    return `税后计算-${cityTitle()}${compactAmount(salary)}月薪-${bonusTitle()}`;
+  }
+
+  function ensureMeta(selector, attrs) {
+    let node = document.querySelector(selector);
+    if (!node) {
+      node = document.createElement('meta');
+      Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, value));
+      document.head.appendChild(node);
+    }
+    return node;
+  }
+
+  function updatePageTitle() {
+    const title = buildShareTitle();
+    const description = `${cityTitle()}税后收入方案：${compactAmount(numberAt('salary'))}月薪，${bonusTitle()}。`;
+    document.title = title;
+
+    ensureMeta('meta[property="og:title"]', { property:'og:title' }).setAttribute('content', title);
+    ensureMeta('meta[property="og:description"]', { property:'og:description' }).setAttribute('content', description);
+    ensureMeta('meta[property="og:type"]', { property:'og:type' }).setAttribute('content', 'website');
+    ensureMeta('meta[name="twitter:title"]', { name:'twitter:title' }).setAttribute('content', title);
+    ensureMeta('meta[itemprop="name"]', { itemprop:'name' }).setAttribute('content', title);
+    currentShareTitle = title;
+    return title;
+  }
+
+  function installLiveTitle() {
+    let queued = false;
+    const queue = () => {
+      if (queued) return;
+      queued = true;
+      queueMicrotask(() => {
+        queued = false;
+        updatePageTitle();
+      });
+    };
+    document.addEventListener('input', queue, true);
+    document.addEventListener('change', queue, true);
+    document.addEventListener('click', queue, false);
+    const city = $('city');
+    if (city) new MutationObserver(queue).observe(city, { childList:true });
+    setTimeout(queue, 50);
+    setTimeout(queue, 400);
+    setTimeout(queue, 1200);
+  }
 
   function deductionNodes() {
     return [...document.querySelectorAll('#deductionGrid input[type="checkbox"][id^="deduction-"]')]
@@ -128,6 +248,7 @@
       if (input && Number.isFinite(Number(row[1]))) input.value = String(row[1]);
     });
     $('bonusTaxModeSelect')?.dispatchEvent(new Event('change', { bubbles:true }));
+    updatePageTitle();
   }
 
   function showToast(text) {
@@ -141,110 +262,136 @@
 
   async function makeShareUrl() {
     const encoded = await encodeState(collectState());
-    return `${location.origin}${location.pathname}${location.search}#s=${encoded}`;
+    return `${location.origin}${location.pathname}#s=${encoded}`;
   }
 
   async function copyText(text) {
-    if (navigator.clipboard?.writeText) {
-      try {
+    try {
+      if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
-        return;
-      } catch (err) {
-        console.debug('clipboard API unavailable, falling back', err);
+        return true;
       }
+    } catch (_) {}
+
+    try {
+      const input = document.createElement('textarea');
+      input.value = text;
+      input.readOnly = true;
+      input.setAttribute('aria-hidden','true');
+      input.style.position = 'fixed';
+      input.style.left = '-9999px';
+      input.style.top = '0';
+      input.style.fontSize = '16px';
+      document.body.appendChild(input);
+      input.select();
+      input.setSelectionRange(0, input.value.length);
+      const copied = document.execCommand('copy');
+      input.remove();
+      return copied;
+    } catch (_) {
+      return false;
     }
-    const input = document.createElement('textarea');
-    input.value = text;
-    input.setAttribute('readonly','');
-    input.style.position = 'fixed';
-    input.style.opacity = '0';
-    document.body.appendChild(input);
-    input.select();
-    document.execCommand('copy');
-    input.remove();
   }
 
-  async function nativeShare(url) {
+  function ensureSharePanel() {
+    if ($('sharePanelBackdrop')) return;
+    const backdrop = document.createElement('div');
+    backdrop.id = 'sharePanelBackdrop';
+    backdrop.className = 'share-panel-backdrop';
+    backdrop.hidden = true;
+    backdrop.innerHTML = `
+      <section class="share-panel" role="dialog" aria-modal="true" aria-labelledby="sharePanelTitle">
+        <div class="share-panel-head">
+          <div>
+            <h3 id="sharePanelTitle">分享当前方案</h3>
+            <p>链接打开后会自动恢复当前收入测算方案。</p>
+          </div>
+          <button id="sharePanelClose" type="button" class="share-close" aria-label="关闭分享界面">×</button>
+        </div>
+        <label class="share-url-label">分享链接
+          <textarea id="shareUrlValue" rows="4" readonly spellcheck="false" aria-label="分享链接"></textarea>
+        </label>
+        <p id="sharePanelStatus" class="share-panel-status" role="status" aria-live="polite">已复制</p>
+        <div class="share-panel-actions">
+          <button id="shareCopyAndShare" type="button" class="share-copy-and-share">复制并分享</button>
+        </div>
+      </section>`;
+    document.body.appendChild(backdrop);
+
+    $('sharePanelClose')?.addEventListener('click', closeSharePanel);
+    backdrop.addEventListener('click', event => {
+      if (event.target === backdrop) closeSharePanel();
+    });
+    $('shareCopyAndShare')?.addEventListener('click', shareFromPanel);
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !backdrop.hidden) closeSharePanel();
+    });
+  }
+
+  function openSharePanel(url) {
+    ensureSharePanel();
+    currentShareUrl = url;
+    currentShareTitle = updatePageTitle();
+    const field = $('shareUrlValue');
+    const status = $('sharePanelStatus');
+    if (field) field.value = url;
+    if (status) status.textContent = '已复制';
+    const backdrop = $('sharePanelBackdrop');
+    if (backdrop) backdrop.hidden = false;
+    document.body.classList.add('share-panel-open');
+  }
+
+  function closeSharePanel() {
+    clearTimeout(autoShareTimer);
+    autoShareTimer = null;
+    const backdrop = $('sharePanelBackdrop');
+    if (backdrop) backdrop.hidden = true;
+    document.body.classList.remove('share-panel-open');
+  }
+
+  async function triggerSystemShare(url, title) {
     if (!navigator.share) return false;
-    await navigator.share({ url });
-    return true;
+    try {
+      await navigator.share({ title, text:title, url });
+      return true;
+    } catch (error) {
+      if (error?.name !== 'AbortError') console.debug('system share unavailable', error);
+      return false;
+    }
   }
 
-  function ensureShareDialog() {
-    let overlay = $('shareLinkOverlay');
-    if (overlay) return overlay;
-    overlay = document.createElement('div');
-    overlay.id = 'shareLinkOverlay';
-    overlay.className = 'share-link-overlay';
-    overlay.hidden = true;
-    overlay.innerHTML = `<section class="share-link-card" role="dialog" aria-modal="true" aria-labelledby="shareLinkTitle">
-      <button class="share-link-close" type="button" aria-label="关闭">×</button>
-      <h3 id="shareLinkTitle">已复制</h3>
-      <a id="shareLinkUrl" class="share-link-open" href="#" target="_blank" rel="noopener"></a>
-      <button id="shareCopyAndShare" class="share-link-action" type="button">复制并分享</button>
-    </section>`;
-    document.body.appendChild(overlay);
-    overlay.addEventListener('click', e => {
-      if (e.target === overlay || e.target.closest('.share-link-close')) overlay.hidden = true;
-    });
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && !overlay.hidden) overlay.hidden = true;
-    });
-    return overlay;
-  }
-
-  function presentShareUrl(url) {
-    const overlay = ensureShareDialog();
-    const link = $('shareLinkUrl');
-    const action = $('shareCopyAndShare');
-    link.href = url;
-    link.textContent = url;
-    action.onclick = async () => {
-      try {
-        await copyText(url);
-        if (navigator.share) {
-          try {
-            await nativeShare(url);
-          } catch (err) {
-            if (err?.name !== 'AbortError') {
-              console.error(err);
-              showToast('链接已复制，系统分享未能打开');
-            }
-          }
-        } else {
-          showToast('链接已复制');
-        }
-      } catch (err) {
-        console.error(err);
-        showToast('复制分享链接失败，请重试');
-      }
-    };
-    overlay.hidden = false;
-  }
-
-  function scheduleNativeShare(url) {
+  function scheduleNativeShare(url, title) {
+    clearTimeout(autoShareTimer);
     if (!navigator.share) return;
-    setTimeout(async () => {
-      try {
-        await nativeShare(url);
-      } catch (err) {
-        if (err?.name !== 'AbortError') console.debug('automatic native share was not allowed', err);
-      }
+    autoShareTimer = setTimeout(() => {
+      triggerSystemShare(url, title);
     }, 1000);
+  }
+
+  async function shareFromPanel() {
+    if (!currentShareUrl) return;
+    const title = updatePageTitle();
+    const copied = await copyText(currentShareUrl);
+    const status = $('sharePanelStatus');
+    if (status) status.textContent = copied ? '已复制' : '复制失败，可长按链接复制';
+    if (navigator.share) await triggerSystemShare(currentShareUrl, title);
   }
 
   async function shareCurrentState() {
     const button = $('floatShare');
     try {
+      const title = updatePageTitle();
       const url = await makeShareUrl();
-      await copyText(url);
-      presentShareUrl(url);
+      const copied = await copyText(url);
+      openSharePanel(url);
+      const status = $('sharePanelStatus');
+      if (status) status.textContent = copied ? '已复制' : '复制失败，可长按链接复制';
       button?.classList.add('share-success');
       setTimeout(() => button?.classList.remove('share-success'), 900);
-      scheduleNativeShare(url);
-    } catch (err) {
-      console.error(err);
-      showToast('生成分享 URL 失败，请重试');
+      scheduleNativeShare(url, title);
+    } catch (error) {
+      console.error(error);
+      showToast('生成分享链接失败，请重试');
     }
   }
 
@@ -254,10 +401,7 @@
     tools.innerHTML = '更多工具：<a href="https://v0v0.github.io/mortgage-calculator/">房贷利率计算器 ↗</a>';
   }
 
-  function bindFloatingTools() {
-    $('floatTop')?.addEventListener('click', () => window.scrollTo({ top:0, behavior:'smooth' }));
-    $('floatResult')?.addEventListener('click', () => $('totalSection')?.scrollIntoView({ behavior:'smooth', block:'start' }));
-    $('floatDetail')?.addEventListener('click', () => $('detailSection')?.scrollIntoView({ behavior:'smooth', block:'start' }));
+  function bindShareButton() {
     $('floatShare')?.addEventListener('click', shareCurrentState);
   }
 
@@ -276,19 +420,22 @@
         }
         try {
           applyState(shared);
-          showToast('已应用分享 URL 中的配置');
-        } catch (err) {
-          console.error(err);
-          showToast('分享 URL 无效或已过期');
+          showToast('已应用分享链接中的配置');
+        } catch (error) {
+          console.error(error);
+          showToast('分享链接无效或已过期');
         }
       }, 50);
-    } catch (err) {
-      console.error(err);
-      showToast('分享 URL 无法解析');
+    } catch (error) {
+      console.error(error);
+      showToast('分享链接无法解析');
     }
   }
 
+  installBranding();
+  installLiveTitle();
+  ensureSharePanel();
   simplifyFooterTools();
-  bindFloatingTools();
+  bindShareButton();
   restoreSharedState();
 })();
