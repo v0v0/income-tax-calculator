@@ -8,6 +8,7 @@
   <title>税后收入计算器</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./share-enhancements.css">
 </head>
 <body>
 <main class="page" id="pageTop">
@@ -71,12 +72,13 @@
           <label id="socialBaseCustomWrap" class="compact-field field-money hidden">自定义基数<input id="socialBaseCustom" type="number" min="0" step="1" value="20000"><span class="field-unit">元</span></label>
           <div class="band-total-inline social-total"><small>个人五险每月扣除</small><b id="monthlySocial">-</b></div>
         </div>
+        <p class="policy-range-note" id="socialPolicyRangeText">当前五险缴费基数范围加载中…</p>
 
         <div class="contribution-table-wrap social-table-wrap">
           <table class="contribution-table social-table">
             <thead>
               <tr>
-                <th>险种</th><th>政策基数范围</th><th>实际计费基数</th><th>个人比例</th><th>个人每月扣除</th><th>公司</th>
+                <th>险种</th><th>实际计费基数</th><th>个人比例</th><th>个人每月扣除</th>
               </tr>
             </thead>
             <tbody id="contributionBody"></tbody>
@@ -114,6 +116,8 @@
           <div class="fund-rate-line" id="fundDefaultLine"><span>默认</span><b id="fundDefaultRate">个人 - · 公司 -</b><small id="fundRateHint"></small></div>
         </div>
 
+        <p class="policy-range-note fund-policy-note">当前住房公积金缴费基数范围：<b id="fundPolicyRange">-</b>；实际计费基数见下方。</p>
+
         <div class="fund-rate-custom hidden" id="fundCustomPanel">
           <label class="compact-field">个人比例<input id="personalFundRate" type="number" min="0" max="30" step="0.1"><span class="field-unit">%</span></label>
           <label class="compact-field">公司比例<input id="employerFundRate" type="number" min="0" max="30" step="0.1"><span class="field-unit">%</span></label>
@@ -121,7 +125,6 @@
         </div>
 
         <div class="fund-detail-grid">
-          <div><small>政策基数范围</small><b id="fundPolicyRange">-</b></div>
           <div><small>实际计费基数</small><b id="fundActualBase">-</b></div>
           <div><small>个人比例</small><b id="fundPersonalRateText">-</b></div>
           <div><small>个人每月扣除</small><b id="monthlyPersonalFund">-</b></div>
@@ -263,18 +266,17 @@
   <button id="floatDetail" type="button" title="查看收入明细" aria-label="查看收入明细">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h14M8 4v16M16 4v16"/></svg>
   </button>
+  <button id="floatShare" type="button" title="分享当前配置" aria-label="分享当前配置">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.5M8.2 13.2l7.6 4.5"/></svg>
+  </button>
 </nav>
+
+<div class="share-toast" id="shareToast" role="status" aria-live="polite"></div>
 
 <script src="./app.js" defer></script>
 <script src="./layout-enhancements.js" defer></script>
-<script>
-var _hmt = _hmt || [];
-(function() {
-  var hm = document.createElement("script");
-  hm.src = "https://hm.baidu.com/hm.js?fb637bf14df14904c4ad987b08f39e54";
-  var s = document.getElementsByTagName("script")[0];
-  s.parentNode.insertBefore(hm, s);
-})();
-</script>
+<script src="./policy-ui.js" defer></script>
+<script src="./share-state.js" defer></script>
+<script src="./analytics-loader.js" defer></script>
 </body>
 </html>
