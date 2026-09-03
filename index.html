@@ -6,74 +6,79 @@
   <meta name="theme-color" content="#eef6ff">
   <meta name="description" content="中国大陆税后收入计算器：工资、年终奖、五险一金、专项附加扣除及新旧收入方案对比。">
   <title>税后收入计算器</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-<main class="page">
+<main class="page" id="pageTop">
   <header class="hero">
     <h1>税后收入计算器</h1>
-    <div class="data-badge" id="dataBadge">政策数据加载中…</div>
   </header>
 
   <section class="card flow-card">
     <div class="flow-toolbar">
       <div>
         <h2>年度收入测算</h2>
-        <p>按收入 → 五险 → 专项扣除 → 公积金 → 到手收入逐层计算</p>
+        <p>按税前收入、五险、专项扣除、公积金与个税逐层计算</p>
       </div>
       <button class="ghost" id="resetBtn" type="button">恢复默认</button>
     </div>
 
     <section class="finance-band income-band">
       <div class="band-heading">
-        <span class="band-index">01</span>
-        <div><h3>税前收入</h3><p>工资与年终奖原始收入</p></div>
+        <div>
+          <h3>税前收入</h3>
+          <p>工资与年终奖原始收入</p>
+        </div>
       </div>
       <div class="band-body">
         <div class="field-row income-fields">
           <label class="compact-field field-city">所在城市<select id="city"></select></label>
-          <label class="compact-field field-salary">税前月工资<input id="salary" type="number" min="0" step="100" value="50000"><span class="field-unit">元/月</span></label>
+          <label class="compact-field field-salary">税前月工资<input id="salary" type="number" min="0" step="100" value="20000"><span class="field-unit">元/月</span></label>
 
           <div class="compact-field field-bonus">
             <span class="field-label">年终奖</span>
             <div class="bonus-pair">
               <select id="bonusInputMode" aria-label="年终奖输入方式"><option value="months">按月数</option><option value="amount">总额</option></select>
               <label id="bonusMonthsWrap" class="inline-value"><input id="bonusMonths" type="number" min="0" step="0.1" value="3"><span>个月</span></label>
-              <label id="bonusAmountWrap" class="inline-value hidden"><input id="bonusAmount" type="number" min="0" step="100" value="150000"><span>元</span></label>
+              <label id="bonusAmountWrap" class="inline-value hidden"><input id="bonusAmount" type="number" min="0" step="100" value="60000"><span>元</span></label>
             </div>
           </div>
 
           <label class="compact-field field-month">奖金发放<select id="bonusMonth"></select></label>
-        </div>
-
-        <div class="sub-control-line">
-          <span class="sub-label">年终奖计税</span>
-          <div class="segmented" id="bonusTaxMode">
-            <button type="button" data-value="auto" class="active">自动择优</button>
-            <button type="button" data-value="separate">单独计税</button>
-            <button type="button" data-value="merged">并入综合所得</button>
-          </div>
-          <span class="policy-pill">单独计税政策有效至 2027-12-31</span>
+          <label class="compact-field field-tax-mode">年终奖计税
+            <select id="bonusTaxModeSelect">
+              <option value="auto">自动最优</option>
+              <option value="separate">单独计税</option>
+              <option value="merged">并入综合所得</option>
+            </select>
+          </label>
         </div>
       </div>
     </section>
 
     <section class="finance-band social-band">
       <div class="band-heading">
-        <span class="band-index">02</span>
-        <div><h3>五险扣除</h3><p id="policySummary">按当前城市政策快照估算</p></div>
+        <div>
+          <h3>五险扣除</h3>
+          <p id="policySummary">按当前城市公开规则估算</p>
+        </div>
         <span class="status-chip" id="policyStatus"></span>
       </div>
       <div class="band-body">
         <div class="field-row">
           <label class="compact-field field-base">社保缴费基数<select id="socialBaseMode"><option value="auto">按工资自动</option><option value="custom">自定义</option></select></label>
-          <label id="socialBaseCustomWrap" class="compact-field field-money hidden">自定义基数<input id="socialBaseCustom" type="number" min="0" step="1" value="50000"><span class="field-unit">元</span></label>
-          <div class="band-total-inline"><small>个人五险每月扣除</small><b id="monthlySocial">-</b></div>
+          <label id="socialBaseCustomWrap" class="compact-field field-money hidden">自定义基数<input id="socialBaseCustom" type="number" min="0" step="1" value="20000"><span class="field-unit">元</span></label>
+          <div class="band-total-inline social-total"><small>个人五险每月扣除</small><b id="monthlySocial">-</b></div>
         </div>
 
         <div class="contribution-table-wrap social-table-wrap">
           <table class="contribution-table social-table">
-            <thead><tr><th>险种</th><th>政策基数范围</th><th>实际计费基数</th><th>个人比例</th><th>个人每月扣除</th><th>公司</th></tr></thead>
+            <thead>
+              <tr>
+                <th>险种</th><th>政策基数范围</th><th>实际计费基数</th><th>个人比例</th><th>个人每月扣除</th><th>公司</th>
+              </tr>
+            </thead>
             <tbody id="contributionBody"></tbody>
           </table>
         </div>
@@ -83,8 +88,10 @@
 
     <section class="finance-band deduction-band">
       <div class="band-heading">
-        <span class="band-index">03</span>
-        <div><h3>专项扣除</h3><p>勾选实际享受的个税扣除项，金额可修改</p></div>
+        <div>
+          <h3>专项扣除</h3>
+          <p>勾选实际享受的个税扣除项，默认金额可修改</p>
+        </div>
       </div>
       <div class="band-body">
         <div class="deduction-grid" id="deductionGrid"></div>
@@ -94,13 +101,15 @@
 
     <section class="finance-band fund-band">
       <div class="band-heading">
-        <span class="band-index">04</span>
-        <div><h3>公积金</h3><p>默认个人与公司缴存比例相同，自定义时可分别填写</p></div>
+        <div>
+          <h3>公积金</h3>
+          <p>默认个人与公司缴存比例相同；自定义时可分别填写</p>
+        </div>
       </div>
       <div class="band-body">
         <div class="field-row fund-controls">
           <label class="compact-field field-base">缴费基数<select id="fundBaseMode"><option value="auto">按工资自动</option><option value="custom">自定义</option></select></label>
-          <label id="fundBaseCustomWrap" class="compact-field field-money hidden">自定义基数<input id="fundBaseCustom" type="number" min="0" step="1" value="50000"><span class="field-unit">元</span></label>
+          <label id="fundBaseCustomWrap" class="compact-field field-money hidden">自定义基数<input id="fundBaseCustom" type="number" min="0" step="1" value="20000"><span class="field-unit">元</span></label>
           <label class="compact-field field-rate-mode">缴存比例<select id="fundRateMode"><option value="default">默认</option><option value="custom">自定义</option></select></label>
           <div class="fund-rate-line" id="fundDefaultLine"><span>默认</span><b id="fundDefaultRate">个人 - · 公司 -</b><small id="fundRateHint"></small></div>
         </div>
@@ -111,7 +120,7 @@
           <small>个人与公司比例分别参与计算。</small>
         </div>
 
-        <div class="fund-detail-grid" id="fundDetailMirror">
+        <div class="fund-detail-grid">
           <div><small>政策基数范围</small><b id="fundPolicyRange">-</b></div>
           <div><small>实际计费基数</small><b id="fundActualBase">-</b></div>
           <div><small>个人比例</small><b id="fundPersonalRateText">-</b></div>
@@ -122,10 +131,12 @@
       </div>
     </section>
 
-    <section class="finance-band total-band">
+    <section class="finance-band total-band" id="totalSection">
       <div class="band-heading">
-        <span class="band-index">05</span>
-        <div><h3>总收入</h3><p id="selectedModeText">自动选择税后更优的奖金计税方式</p></div>
+        <div>
+          <h3>总收入</h3>
+          <p id="selectedModeText">自动选择税后更优的奖金计税方式</p>
+        </div>
       </div>
       <div class="band-body">
         <div class="total-hero">
@@ -164,6 +175,34 @@
           <label id="newBonusAmountWrap" class="inline-value hidden"><input id="newBonusAmount" type="number" min="0" step="100" value="240000"><span>元</span></label>
         </div></div>
       </div>
+
+      <div class="new-plan-snapshot">
+        <div class="snapshot-group snapshot-income">
+          <h3>新方案收入</h3>
+          <div class="snapshot-items">
+            <div><small>新年薪</small><b id="newAnnualSalary">-</b></div>
+            <div><small>新年终奖</small><b id="newBonusGross">-</b></div>
+            <div><small>税前总收入</small><b id="newGrossAnnual">-</b></div>
+          </div>
+        </div>
+        <div class="snapshot-group snapshot-deduction">
+          <h3>新方案扣除</h3>
+          <div class="snapshot-items">
+            <div><small>五险个人扣除</small><b id="newSocialDeduction">-</b></div>
+            <div><small>公积金个人扣除</small><b id="newFundDeduction">-</b></div>
+            <div><small>全年个税</small><b id="newTaxDeduction">-</b></div>
+          </div>
+        </div>
+        <div class="snapshot-group snapshot-result">
+          <h3>新方案到手</h3>
+          <div class="snapshot-items">
+            <div><small>税后现金</small><b id="newCashAmount">-</b></div>
+            <div><small>公积金双边入账</small><b id="newFundCredit">-</b></div>
+            <div><small>现金 + 公积金</small><b id="newComprehensiveAmount">-</b></div>
+          </div>
+        </div>
+      </div>
+
       <p class="hint">当前为自动基数时，新方案按新月薪重新计算；当前为自定义基数时沿用自定义基数。</p>
       <div class="comparison-deltas">
         <div><small>现金收入增加</small><b id="cashIncrease">-</b></div>
@@ -174,16 +213,36 @@
     </div>
   </details>
 
-  <section class="card detail-card">
+  <section class="card detail-card" id="detailSection">
     <div class="section-title">
       <div><h2>收入明细</h2><p>工资税采用累计预扣法</p></div>
-      <div class="segmented" id="detailTabs"><button type="button" data-value="annual">年度汇总</button><button type="button" data-value="monthly" class="active">每月明细</button></div>
+      <div class="segmented" id="detailTabs"><button type="button" data-value="monthly" class="active">每月明细</button><button type="button" data-value="annual">年度汇总</button></div>
     </div>
-    <div id="monthlyPanel" class="detail-panel"><div class="table-wrap monthly-wrap"><table>
-      <thead><tr><th>月份</th><th>税前工资</th><th>年终奖</th><th>养老</th><th>医疗</th><th>失业</th><th>个人公积金</th><th>当月个税</th><th>税后现金</th><th>公积金入账</th><th>累计税后现金</th></tr></thead>
-      <tbody id="monthlyBody"></tbody>
-    </table></div></div>
-    <div id="annualPanel" class="detail-panel hidden"><div class="annual-list" id="annualList"></div></div>
+
+    <div id="monthlyPanel" class="detail-panel">
+      <div class="table-wrap monthly-wrap"><table class="monthly-table">
+        <thead>
+          <tr>
+            <th class="head-meta">月份</th>
+            <th class="head-income">税前工资</th>
+            <th class="head-income">年终奖</th>
+            <th class="head-social">养老</th>
+            <th class="head-social">医疗</th>
+            <th class="head-social">失业</th>
+            <th class="head-fund">个人公积金</th>
+            <th class="head-tax">当月个税</th>
+            <th class="head-cash">税后现金</th>
+            <th class="head-fund">公积金入账</th>
+            <th class="head-cash">累计税后现金</th>
+          </tr>
+        </thead>
+        <tbody id="monthlyBody"></tbody>
+      </table></div>
+    </div>
+
+    <div id="annualPanel" class="detail-panel hidden">
+      <div class="annual-sections" id="annualList"></div>
+    </div>
   </section>
 
   <footer>
@@ -193,7 +252,29 @@
     <p class="tool-links">更多工具：<a href="https://v0v0.github.io/mortgage-calculator/">房贷利率计算器 ↗</a> · <b>税后收入计算器</b></p>
   </footer>
 </main>
+
+<nav class="floating-tools" aria-label="快捷工具">
+  <button id="floatTop" type="button" title="回到顶部" aria-label="回到顶部">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+  </button>
+  <button id="floatResult" type="button" title="查看年度结果" aria-label="查看年度结果">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V9M12 19V5M19 19v-7M3 19h18"/></svg>
+  </button>
+  <button id="floatDetail" type="button" title="查看收入明细" aria-label="查看收入明细">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h14M8 4v16M16 4v16"/></svg>
+  </button>
+</nav>
+
 <script src="./app.js" defer></script>
 <script src="./layout-enhancements.js" defer></script>
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?fb637bf14df14904c4ad987b08f39e54";
+  var s = document.getElementsByTagName("script")[0];
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
 </body>
 </html>
