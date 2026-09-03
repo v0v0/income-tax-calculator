@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#eef6ff">
+  <meta name="description" content="中国大陆税后收入计算器：工资、年终奖、五险一金、专项附加扣除及新旧收入方案对比。">
+  <title>税后收入计算器</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<main class="page">
+  <header class="hero">
+    <h1>税后收入计算器</h1>
+    <div class="data-badge" id="dataBadge">政策数据加载中…</div>
+  </header>
+
+  <section class="card form-card">
+    <div class="section-title">
+      <div><h2>收入参数</h2><p>居民个人 · 工资薪金 · 2026</p></div>
+      <button class="ghost" id="resetBtn" type="button">恢复默认</button>
+    </div>
+    <div class="grid income-grid">
+      <label>所在城市<select id="city"></select></label>
+      <label>税前月工资（元）<input id="salary" type="number" min="0" step="100" value="50000"></label>
+      <label>年终奖输入
+        <select id="bonusInputMode"><option value="months">按月数</option><option value="amount">直接输入总额</option></select>
+      </label>
+      <label id="bonusMonthsWrap">年终奖月数<input id="bonusMonths" type="number" min="0" step="0.1" value="3"></label>
+      <label id="bonusAmountWrap" class="hidden">年终奖总额（元）<input id="bonusAmount" type="number" min="0" step="100" value="150000"></label>
+      <label>奖金发放月份<select id="bonusMonth"></select></label>
+    </div>
+    <div class="tax-mode-row">
+      <span>年终奖计税</span>
+      <div class="segmented" id="bonusTaxMode">
+        <button type="button" data-value="auto" class="active">自动择优</button>
+        <button type="button" data-value="separate">单独计税</button>
+        <button type="button" data-value="merged">并入综合所得</button>
+      </div>
+      <span class="policy-pill">单独计税政策有效至 2027-12-31</span>
+    </div>
+  </section>
+
+  <section class="card contribution-card">
+    <div class="section-title">
+      <div><h2>五险一金缴费基数与扣除额</h2><p id="policySummary">按当前城市政策快照估算</p></div>
+      <span class="status-chip" id="policyStatus"></span>
+    </div>
+
+    <div class="base-controls">
+      <label>社保缴费基数
+        <select id="socialBaseMode"><option value="auto">按月工资自动</option><option value="custom">自定义</option></select>
+      </label>
+      <label id="socialBaseCustomWrap" class="hidden">自定义社保基数（元）
+        <input id="socialBaseCustom" type="number" min="0" step="1" value="50000">
+      </label>
+      <label>公积金缴费基数
+        <select id="fundBaseMode"><option value="auto">按月工资自动</option><option value="custom">自定义</option></select>
+      </label>
+      <label id="fundBaseCustomWrap" class="hidden">自定义公积金基数（元）
+        <input id="fundBaseCustom" type="number" min="0" step="1" value="50000">
+      </label>
+      <label>公积金比例
+        <select id="fundRateMode"><option value="default">默认</option><option value="custom">自定义</option></select>
+      </label>
+    </div>
+
+    <div class="fund-rate-line" id="fundDefaultLine">
+      <span>默认比例</span>
+      <b id="fundDefaultRate">个人 - · 公司 -</b>
+      <small id="fundRateHint"></small>
+    </div>
+    <div class="fund-rate-custom hidden" id="fundCustomPanel">
+      <label>个人缴存比例（%）<input id="personalFundRate" type="number" min="0" max="30" step="0.1"></label>
+      <label>公司缴存比例（%）<input id="employerFundRate" type="number" min="0" max="30" step="0.1"></label>
+      <small>自定义模式下个人与公司比例可分别填写。</small>
+    </div>
+
+    <div class="contribution-table-wrap">
+      <table class="contribution-table">
+        <thead>
+          <tr><th>项目</th><th>政策基数范围</th><th>实际计费基数</th><th>个人比例</th><th>个人每月扣除</th><th>公司每月缴存</th></tr>
+        </thead>
+        <tbody id="contributionBody"></tbody>
+      </table>
+    </div>
+    <div class="contribution-summary">
+      <span>个人社保每月 <b id="monthlySocial">-</b></span>
+      <span>个人公积金每月 <b id="monthlyPersonalFund">-</b></span>
+      <span>公司公积金每月 <b id="monthlyEmployerFund">-</b></span>
+      <span>公积金账户每月入账 <b id="monthlyFundTotal">-</b></span>
+    </div>
+    <p class="hint" id="baseHint">自动基数按“月工资 → 当地上下限截断”估算；实际单位申报通常依据本人上年度月平均工资，可切换为自定义基数。</p>
+  </section>
+
+  <section class="card deductions-card">
+    <div class="section-title">
+      <div><h2>个税可扣除项</h2><p>勾选后参与计算；默认金额均可手工修改</p></div>
+    </div>
+    <div class="deduction-grid" id="deductionGrid"></div>
+    <p class="hint">住房贷款利息与住房租金按同一纳税年度互斥；大病医疗作为年度汇算扣除处理；个人养老金年度扣除最多按 12,000 元计。</p>
+  </section>
+
+  <section class="card result-card">
+    <div class="section-title"><div><h2>年度结果</h2><p id="selectedModeText">自动选择税后更优的奖金计税方式</p></div></div>
+    <div class="metrics">
+      <div class="metric"><small>税前年收入</small><b id="grossAnnual">-</b></div>
+      <div class="metric primary"><small>年度最终税后现金</small><b id="annualCash">-</b></div>
+      <div class="metric"><small>个人公积金</small><b id="personalFundAnnual">-</b></div>
+      <div class="metric"><small>公司公积金</small><b id="employerFundAnnual">-</b></div>
+      <div class="metric"><small>个人社保</small><b id="socialAnnual">-</b></div>
+      <div class="metric"><small>全年个税</small><b id="annualTax">-</b></div>
+      <div class="metric green"><small>公积金账户全年入账</small><b id="fundTotalAnnual">-</b></div>
+      <div class="metric green"><small>现金 + 公积金</small><b id="comprehensiveAnnual">-</b></div>
+    </div>
+    <div class="summary-strip">
+      <span>现金到手率 <b id="cashRate">-</b></span>
+      <span>现金+公积金 / 税前收入 <b id="comprehensiveRate">-</b></span>
+      <span>预计年度汇算退/补税 <b id="settlement">-</b></span>
+    </div>
+  </section>
+
+  <section class="card bonus-compare-card">
+    <div class="section-title"><div><h2>年终奖计税方式对比</h2><p>两种方式始终同时计算</p></div></div>
+    <div class="bonus-comparison" id="bonusComparison"></div>
+  </section>
+
+  <details class="card advanced-card" id="advancedCompare">
+    <summary>
+      <span><b>高级：对比新的收入方案</b><small>Offer / 调薪场景，默认继承城市、扣除项和五险一金设置</small></span>
+      <span class="summary-arrow">⌄</span>
+    </summary>
+    <div class="advanced-body">
+      <div class="grid compare-input-grid">
+        <label>新月薪（元）<input id="newSalary" type="number" min="0" step="100" value="60000"></label>
+        <label>新年终奖输入<select id="newBonusInputMode"><option value="months">按月数</option><option value="amount">直接输入总额</option></select></label>
+        <label id="newBonusMonthsWrap">新年终奖月数<input id="newBonusMonths" type="number" min="0" step="0.1" value="4"></label>
+        <label id="newBonusAmountWrap" class="hidden">新年终奖总额（元）<input id="newBonusAmount" type="number" min="0" step="100" value="240000"></label>
+      </div>
+      <p class="hint">当前设置为“自动基数”时，新方案按新月薪重新计算缴费基数；当前设置为自定义基数时，新方案沿用该自定义基数。</p>
+      <div class="comparison-deltas">
+        <div><small>现金收入增加</small><b id="cashIncrease">-</b></div>
+        <div><small>公积金增加</small><b id="fundIncrease">-</b></div>
+        <div><small>总税后收入增加</small><b id="totalIncrease">-</b></div>
+      </div>
+      <div class="table-wrap compact-table">
+        <table><thead><tr><th>项目</th><th>当前方案</th><th>新方案</th><th>增加额</th><th>增加比例</th></tr></thead><tbody id="planComparisonBody"></tbody></table>
+      </div>
+    </div>
+  </details>
+
+  <section class="card detail-card">
+    <div class="section-title">
+      <div><h2>收入明细</h2><p>工资税采用累计预扣法</p></div>
+      <div class="segmented" id="detailTabs">
+        <button type="button" data-value="annual">年度汇总</button>
+        <button type="button" data-value="monthly" class="active">每月明细</button>
+      </div>
+    </div>
+    <div id="monthlyPanel" class="detail-panel">
+      <div class="table-wrap monthly-wrap"><table>
+        <thead><tr><th>月份</th><th>税前工资</th><th>年终奖</th><th>养老</th><th>医疗</th><th>失业</th><th>个人公积金</th><th>当月个税</th><th>税后现金</th><th>公积金入账</th><th>累计税后现金</th></tr></thead>
+        <tbody id="monthlyBody"></tbody>
+      </table></div>
+    </div>
+    <div id="annualPanel" class="detail-panel hidden">
+      <div class="annual-list" id="annualList"></div>
+    </div>
+  </section>
+
+  <footer>
+    <p id="sourceFooter">数据来源加载中…</p>
+    <p>本工具仅供估算，不构成税务、社保或法律建议。实际结果以工资单、单位申报及当地税务、人社、医保、公积金管理部门执行为准。</p>
+    <p>本工具不上传精确工资、奖金、专项附加扣除等收入隐私数据。</p>
+    <p class="tool-links">更多工具：<a href="https://v0v0.github.io/mortgage-calculator/">房贷利率计算器 ↗</a> · <b>税后收入计算器</b></p>
+  </footer>
+</main>
+<script src="./app.js" defer></script>
+</body>
+</html>
